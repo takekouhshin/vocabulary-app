@@ -6,7 +6,13 @@ const GITHUB_CONFIG = {
     OWNER: 'takekouhshin',
     REPO: 'vocabulary-app',
     FILE_PATH: 'data.json',
-    TOKEN: '' // GitHub Actionsから注入
+    TOKEN: ''
+};
+
+// 初期データ構造
+const DEFAULT_DATA = {
+    words: [],
+    lastUpdate: new Date().toISOString()
 };
 
 async function getFileFromGitHub() {
@@ -18,6 +24,12 @@ async function getFileFromGitHub() {
             });
         }
 
+        // トークンがない場合は初期データを返す
+        if (!GITHUB_CONFIG.TOKEN) {
+            console.log('トークンが設定されていません。初期データを返します。');
+            return { content: DEFAULT_DATA, sha: null };
+        }
+
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
             headers: {
                 'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
@@ -26,26 +38,40 @@ async function getFileFromGitHub() {
         });
 
         if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.status}`);
+            console.error('API応答エラー:', response.status);
+            return { content: DEFAULT_DATA, sha: null };
         }
 
         const data = await response.json();
         if (!data.content) {
-            return { content: { words: [], lastUpdate: new Date().toISOString() }, sha: data.sha };
+            return { content: DEFAULT_DATA, sha: data.sha };
         }
-        return {
-            content: JSON.parse(atob(data.content)),
-            sha: data.sha
-        };
+
+        try {
+            const decodedContent = atob(data.content);
+            const parsedContent = JSON.parse(decodedContent);
+            return {
+                content: parsedContent || DEFAULT_DATA,
+                sha: data.sha
+            };
+        } catch (parseError) {
+            console.error('データパースエラー:', parseError);
+            return { content: DEFAULT_DATA, sha: data.sha };
+        }
     } catch (error) {
         console.error('GitHub APIエラー:', error);
-        throw error;
+        return { content: DEFAULT_DATA, sha: null };
     }
 }
 
 async function updateFileOnGitHub(content, sha) {
     try {
-        // UTF-8文字列を適切にエンコード
+        // トークンがない場合は更新をスキップ
+        if (!GITHUB_CONFIG.TOKEN) {
+            console.log('トークンが設定されていません。更新をスキップします。');
+            return null;
+        }
+
         const jsonString = JSON.stringify(content);
         const encodedContent = btoa(unescape(encodeURIComponent(jsonString)));
 
@@ -64,13 +90,13 @@ async function updateFileOnGitHub(content, sha) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`GitHub API error: ${response.status} ${JSON.stringify(errorData)}`);
+            console.error('API更新エラー:', response.status);
+            return null;
         }
 
         return await response.json();
     } catch (error) {
         console.error('GitHub API更新エラー:', error);
-        throw error;
+        return null;
     }
 }

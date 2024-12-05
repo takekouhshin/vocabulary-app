@@ -86,13 +86,39 @@
         }
 
         // データの保存
-        async function saveWords() {
-            const { sha } = await getFileFromGitHub();
-            const result = await updateFileOnGitHub(wordData, sha);
-            if (result) {
-                updateLastUpdate();
+        async function saveWords(event) {
+            event.preventDefault();
+            
+            try {
+                const result = await getFileFromGitHub();
+                const currentData = result.content || { words: [], lastUpdate: new Date().toISOString() };
+                
+                // 新しい単語を追加
+                const newWord = {
+                    english: document.getElementById('english').value,
+                    japanese: document.getElementById('japanese').value,
+                    section: document.getElementById('section').value,
+                    addedAt: new Date().toISOString()
+                };
+                
+                currentData.words = currentData.words || [];
+                currentData.words.push(newWord);
+                currentData.lastUpdate = new Date().toISOString();
+                
+                // GitHub APIで保存
+                const updateResult = await updateFileOnGitHub(currentData, result.sha);
+                
+                if (updateResult || !GITHUB_CONFIG.TOKEN) {
+                    // フォームをリセット
+                    document.getElementById('wordForm').reset();
+                    alert('単語を保存しました！');
+                } else {
+                    alert('保存に失敗しました。');
+                }
+            } catch (error) {
+                console.error('保存エラー:', error);
+                alert('エラーが発生しました。');
             }
-            return result;
         }
 
         function updateCounts() {
