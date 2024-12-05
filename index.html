@@ -79,13 +79,16 @@
 
         // データの読み込み
         async function loadWords() {
-            const { content } = await getFileFromGitHub();
-            wordData = content;
-            updateCounts();
-            updateLastUpdate();
+            try {
+                const data = await getWordsFromSheets();
+                // 必要に応じてデータを表示
+                console.log('読み込んだデータ:', data);
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+            }
         }
 
-        // データの保存
+        // フォーム送信処理
         async function saveWords(event) {
             if (event) event.preventDefault();
             
@@ -105,7 +108,7 @@
                 }
 
                 // 現在のデータを取得
-                const currentData = await getFileFromGitHub();
+                const currentData = await getWordsFromSheets();
                 
                 // 配列が未定義の場合は初期化
                 currentData.words = currentData.words || [];
@@ -141,10 +144,10 @@
                 `最終更新: ${date.toLocaleString()}`;
         }
 
-        // フォーム送信処理
+        // イベントリスナーの設定
         document.getElementById('wordForm').addEventListener('submit', saveWords);
 
-        // 初期表示時のデータ読み込み
+        // ページ読み込み時にデータを読み込む
         loadWords();
     </script>
 </body>
