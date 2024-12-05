@@ -23,7 +23,7 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           sed -i "s/OWNER: '.*'/OWNER: '$REPO_OWNER'/" config.js
-          sed -i 's/TOKEN: ""/TOKEN: "${{ secrets.GITHUB_TOKEN }}"/' config.js
+          sed -i 's/TOKEN: ""/TOKEN: "${{ secrets.API_TOKEN }}"/' config.js
           cat config.js # デバッグ用に内容を表示
 
       - name: Create data.json if not exists
