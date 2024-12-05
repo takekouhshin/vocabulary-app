@@ -20,7 +20,7 @@ async function getFileFromGitHub() {
 
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
             headers: {
-                'Authorization': `Bearer ${GITHUB_CONFIG.TOKEN}`,
+                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json'
             }
         });
@@ -30,12 +30,11 @@ async function getFileFromGitHub() {
         }
 
         const data = await response.json();
-        // 空のファイルの場合は空配列を返す
         if (!data.content) {
-            return { content: [], sha: data.sha };
+            return { content: { words: [], lastUpdate: new Date().toISOString() }, sha: data.sha };
         }
         return {
-            content: JSON.parse(atob(data.content)) || [],
+            content: JSON.parse(atob(data.content)),
             sha: data.sha
         };
     } catch (error) {
@@ -53,7 +52,7 @@ async function updateFileOnGitHub(content, sha) {
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${GITHUB_CONFIG.TOKEN}`,
+                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json',
             },
@@ -65,7 +64,8 @@ async function updateFileOnGitHub(content, sha) {
         });
 
         if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(`GitHub API error: ${response.status} ${JSON.stringify(errorData)}`);
         }
 
         return await response.json();
