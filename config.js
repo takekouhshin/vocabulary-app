@@ -1,102 +1,69 @@
-// デバッグモードフラグ
-const DEBUG = new URLSearchParams(window.location.search).get('debug') === 'true';
-
-// GitHub設定
-const GITHUB_CONFIG = {
-    OWNER: 'takekouhshin',
-    REPO: 'vocabulary-app',
-    FILE_PATH: 'data.json',
-    TOKEN: ''
+// Google Sheets API設定
+const SHEETS_CONFIG = {
+    API_KEY: '', // GitHub Actionsから注入
+    SPREADSHEET_ID: '', // あなたのスプレッドシートID
+    RANGE: 'Sheet1!A:D' // 使用する範囲
 };
 
-// 初期データ構造
-const DEFAULT_DATA = {
-    words: [],
-    lastUpdate: new Date().toISOString()
-};
-
-async function getFileFromGitHub() {
+async function getWordsFromSheets() {
     try {
-        if (DEBUG) {
-            console.log('API呼び出し設定:', {
-                url: `https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`,
-                hasToken: !!GITHUB_CONFIG.TOKEN
-            });
-        }
-
-        // トークンがない場合は初期データを返す
-        if (!GITHUB_CONFIG.TOKEN) {
-            console.log('トークンが設定されていません。初期データを返します。');
-            return { content: DEFAULT_DATA, sha: null };
-        }
-
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
-            headers: {
-                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?key=${SHEETS_CONFIG.API_KEY}`
+        );
 
         if (!response.ok) {
-            console.error('API応答エラー:', response.status);
-            return { content: DEFAULT_DATA, sha: null };
+            throw new Error(`Sheets API error: ${response.status}`);
         }
 
         const data = await response.json();
-        if (!data.content) {
-            return { content: DEFAULT_DATA, sha: data.sha };
-        }
+        const rows = data.values || [];
+        
+        // ヘッダー行をスキップしてデータを整形
+        const words = rows.slice(1).map(row => ({
+            word: row[0] || '',
+            meaning: row[1] || '',
+            example: row[2] || '',
+            addedAt: row[3] || new Date().toISOString()
+        }));
 
-        try {
-            const decodedContent = atob(data.content);
-            const parsedContent = JSON.parse(decodedContent);
-            return {
-                content: parsedContent || DEFAULT_DATA,
-                sha: data.sha
-            };
-        } catch (parseError) {
-            console.error('データパースエラー:', parseError);
-            return { content: DEFAULT_DATA, sha: data.sha };
-        }
+        return {
+            words,
+            lastUpdate: new Date().toISOString()
+        };
     } catch (error) {
-        console.error('GitHub APIエラー:', error);
-        return { content: DEFAULT_DATA, sha: null };
+        console.error('Sheets APIエラー:', error);
+        return { words: [], lastUpdate: new Date().toISOString() };
     }
 }
 
-async function updateFileOnGitHub(content, sha) {
+async function updateWordsInSheets(words) {
     try {
-        // トークンがない場合は更新をスキップ
-        if (!GITHUB_CONFIG.TOKEN) {
-            console.log('トークンが設定されていません。更新をスキップします。');
-            return null;
-        }
+        const values = [
+            ['Word', 'Meaning', 'Example', 'Added At'], // ヘッダー行
+            ...words.map(w => [w.word, w.meaning, w.example || '', w.addedAt])
+        ];
 
-        const jsonString = JSON.stringify(content);
-        const encodedContent = btoa(unescape(encodeURIComponent(jsonString)));
-
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: 'Update data.json',
-                content: encodedContent,
-                sha: sha
-            })
-        });
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?key=${SHEETS_CONFIG.API_KEY}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    values,
+                    valueInputOption: 'RAW'
+                })
+            }
+        );
 
         if (!response.ok) {
-            console.error('API更新エラー:', response.status);
-            return null;
+            throw new Error(`Sheets API error: ${response.status}`);
         }
 
-        return await response.json();
+        return true;
     } catch (error) {
-        console.error('GitHub API更新エラー:', error);
-        return null;
+        console.error('Sheets API更新エラー:', error);
+        return false;
     }
 }

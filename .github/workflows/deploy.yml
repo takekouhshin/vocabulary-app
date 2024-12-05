@@ -18,12 +18,10 @@ jobs:
         uses: actions/checkout@v3
 
       # config.jsにGitHubトークンを注入
-      - name: Update config.js with GitHub token and repo info
-        env:
-          REPO_OWNER: ${{ github.repository_owner }}
+      - name: Update config.js with Sheets API key
         run: |
-          sed -i "s/OWNER: '.*'/OWNER: '$REPO_OWNER'/" config.js
-          sed -i 's/TOKEN: ""/TOKEN: "${{ secrets.API_TOKEN }}"/' config.js
+          sed -i 's/API_KEY: ""/API_KEY: "${{ secrets.SHEETS_API_KEY }}"/' config.js
+          sed -i 's/SPREADSHEET_ID: ""/SPREADSHEET_ID: "${{ secrets.SPREADSHEET_ID }}"/' config.js
           cat config.js # デバッグ用に内容を表示
 
       - name: Create data.json if not exists
