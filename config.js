@@ -9,17 +9,25 @@ const SHEETS_CONFIG = {
 async function getWordsFromSheets() {
     try {
         const baseUrl = 'https://sheets.googleapis.com/v4/spreadsheets';
-        const url = `${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`;
+        const url = new URL(`${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`);
         
-        const response = await fetch(`${url}?key=${SHEETS_CONFIG.API_KEY}`);
+        // クエリパラメータを追加
+        url.searchParams.append('key', SHEETS_CONFIG.API_KEY);
+        url.searchParams.append('valueRenderOption', 'UNFORMATTED_VALUE');
+        url.searchParams.append('dateTimeRenderOption', 'FORMATTED_STRING');
+
+        console.log('リクエストURL:', url.toString()); // デバッグ用
+
+        const response = await fetch(url.toString());
 
         if (!response.ok) {
             const errorData = await response.json();
             console.error('API応答詳細:', errorData);
-            throw new Error(`Sheets API error: ${response.status}`);
+            throw new Error(`Sheets API error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
 
         const data = await response.json();
+        console.log('API応答データ:', data); // デバッグ用
         
         if (!data.values) {
             return { 
