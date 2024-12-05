@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>テスト | 英単語学習アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen">
     <nav class="bg-white shadow-lg">
@@ -15,13 +16,14 @@
                     <div class="hidden md:flex space-x-4">
                         <a href="index.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">単語登録</a>
                         <a href="list.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">単語一覧</a>
+                        <a href="test.html" class="text-blue-600 px-3 py-2 rounded-md font-medium">テスト</a>
                     </div>
                 </div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-3xl mx-auto px-4 py-4">
+    <main class="max-w-3xl mx-auto px-4 py-8">
         <!-- セクション選択画面 -->
         <div id="sectionSelect" class="bg-white rounded-xl shadow-sm p-8">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">テストセクションを選択</h2>
@@ -33,7 +35,7 @@
         </div>
 
         <!-- テスト画面 -->
-        <div id="testContainer" class="hidden">
+        <div id="testContainer" class="hidden space-y-4">
             <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                 <!-- セクション情報 -->
                 <div class="bg-gray-50 p-4 border-b">
@@ -44,7 +46,8 @@
                 <div id="questionArea" class="p-8 border-b">
                     <div class="mb-6">
                         <div class="text-sm text-gray-500 mb-1">問題：</div>
-                        <div id="questionWord" class="text-2xl font-bold text-gray-800"></div>
+                        <div id="questionWord" class="text-3xl font-bold text-gray-800 mb-2"></div>
+                        <div id="pronunciation" class="text-sm text-gray-500"></div>
                     </div>
                     <input type="text" id="answer" 
                            class="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
@@ -59,6 +62,10 @@
                 <div id="resultArea" class="hidden p-8 bg-gray-50">
                     <div id="result" class="text-xl font-bold mb-2"></div>
                     <div id="correctAnswer" class="text-gray-600 mb-4"></div>
+                    <div id="example" class="text-sm text-gray-600 mb-4 hidden">
+                        <div class="font-medium mb-1">例文：</div>
+                        <div class="italic"></div>
+                    </div>
                     <button id="nextQuestion" 
                             class="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition duration-200">
                         次の問題へ
@@ -67,13 +74,13 @@
             </div>
 
             <!-- 進捗バー -->
-            <div class="mt-4 bg-white rounded-lg shadow-sm p-4">
+            <div class="bg-white rounded-lg shadow-sm p-4">
                 <div class="flex justify-between text-sm text-gray-600 mb-2">
                     <span>進捗状況</span>
                     <span id="progressText">0 / 0問</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                    <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
         </div>
@@ -81,8 +88,12 @@
         <!-- テスト結果の表示エリア -->
         <div id="testResults" class="hidden">
             <div class="bg-white rounded-xl shadow-sm p-8">
-                <h3 class="text-xl font-bold mb-4 text-gray-800">テスト結果</h3>
-                <div id="resultsContent"></div>
+                <h3 class="text-xl font-bold mb-6 text-gray-800">テスト結果</h3>
+                <div id="resultsContent" class="mb-6"></div>
+                <div id="wrongAnswers" class="mt-6 hidden">
+                    <h4 class="font-medium text-gray-800 mb-3">間違えた単語</h4>
+                    <div class="space-y-3"></div>
+                </div>
                 <div class="mt-6 flex justify-center space-x-4">
                     <button onclick="showSectionSelect()" 
                             class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition duration-200">
@@ -103,6 +114,7 @@
         let currentQuestionIndex = 0;
         let correctCount = 0;
         let currentSectionIndex = 0;
+        let wrongAnswers = [];
 
         async function loadWords() {
             try {
@@ -111,6 +123,11 @@
                 showSectionSelect();
             } catch (error) {
                 console.error('データ読み込みエラー:', error);
+                document.getElementById('sectionList').innerHTML = `
+                    <div class="text-center text-red-500">
+                        データの読み込みに失敗しました。ページを更新してください。
+                    </div>
+                `;
             }
         }
 
@@ -168,6 +185,7 @@
             testWords = [...sections[sectionIndex]].sort(() => Math.random() - 0.5);
             currentQuestionIndex = 0;
             correctCount = 0;
+            wrongAnswers = [];
 
             document.getElementById('sectionSelect').classList.add('hidden');
             document.getElementById('testContainer').classList.remove('hidden');
@@ -184,6 +202,8 @@
         function showQuestion() {
             const currentWord = testWords[currentQuestionIndex];
             document.getElementById('questionWord').textContent = currentWord.word;
+            document.getElementById('pronunciation').textContent = 
+                currentWord.pronunciation ? `発音: ${currentWord.pronunciation}` : '';
             document.getElementById('answer').value = '';
             document.getElementById('resultArea').classList.add('hidden');
             document.getElementById('answer').focus();
@@ -197,15 +217,33 @@
         }
 
         function checkAnswer() {
-            const answer = document.getElementById('answer').value;
+            const answer = document.getElementById('answer').value.trim();
             const currentWord = testWords[currentQuestionIndex];
             const isCorrect = answer === currentWord.meaning;
 
-            if (isCorrect) correctCount++;
+            if (isCorrect) {
+                correctCount++;
+            } else {
+                wrongAnswers.push({
+                    word: currentWord.word,
+                    meaning: currentWord.meaning,
+                    userAnswer: answer
+                });
+            }
 
             document.getElementById('result').textContent = isCorrect ? '正解！' : '不正解';
             document.getElementById('result').className = `text-xl font-bold mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`;
             document.getElementById('correctAnswer').textContent = `正しい答え: ${currentWord.meaning}`;
+
+            // 例文の表示
+            const exampleDiv = document.getElementById('example');
+            if (currentWord.example) {
+                exampleDiv.classList.remove('hidden');
+                exampleDiv.querySelector('div:last-child').textContent = currentWord.example;
+            } else {
+                exampleDiv.classList.add('hidden');
+            }
+
             document.getElementById('resultArea').classList.remove('hidden');
         }
 
@@ -225,6 +263,7 @@
             document.getElementById('testContainer').classList.add('hidden');
             document.getElementById('testResults').classList.remove('hidden');
             
+            // 結果の表示
             document.getElementById('resultsContent').innerHTML = `
                 <div class="text-center">
                     <div class="text-4xl font-bold ${percentage >= 80 ? 'text-green-500' : percentage >= 60 ? 'text-yellow-500' : 'text-red-500'}">
@@ -233,8 +272,36 @@
                     <div class="text-gray-600 mt-2">
                         ${testWords.length}問中${correctCount}問正解
                     </div>
+                    <div class="mt-4 text-sm text-gray-500">
+                        ${getResultMessage(percentage)}
+                    </div>
                 </div>
             `;
+
+            // 間違えた単語の表示
+            const wrongAnswersDiv = document.getElementById('wrongAnswers');
+            if (wrongAnswers.length > 0) {
+                wrongAnswersDiv.classList.remove('hidden');
+                wrongAnswersDiv.querySelector('div:last-child').innerHTML = wrongAnswers.map(wrong => `
+                    <div class="bg-red-50 p-3 rounded-lg">
+                        <div class="font-medium text-gray-800">${wrong.word}</div>
+                        <div class="text-sm text-gray-600">
+                            <span class="text-red-500">あなたの回答: ${wrong.userAnswer || '(未回答)'}</span>
+                            <br>
+                            <span class="text-green-500">正しい答え: ${wrong.meaning}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                wrongAnswersDiv.classList.add('hidden');
+            }
+        }
+
+        function getResultMessage(percentage) {
+            if (percentage === 100) return '完璧です！おめでとうございます！';
+            if (percentage >= 80) return '素晴らしい成績です！';
+            if (percentage >= 60) return 'もう少し頑張りましょう！';
+            return '間違えた単語を復習しましょう。';
         }
 
         function retrySection() {
@@ -252,10 +319,7 @@
             }
         });
 
-        document.getElementById('checkAnswer').addEventListener('click', checkAnswer);
-        document.getElementById('nextQuestion').addEventListener('click', nextQuestion);
-
-        // 初期表示時のデータ読み込み
+        // 初期化
         loadWords();
     </script>
 </body>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英単語学習アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen">
     <nav class="bg-white shadow-lg">
@@ -13,6 +14,7 @@
                 <h1 class="text-2xl font-bold text-gray-800">英単語学習アプリ</h1>
                 <div class="flex items-center space-x-4">
                     <span id="wordCount" class="text-sm text-gray-600">単語数: 0</span>
+                    <span id="lastUpdate" class="text-sm text-gray-500"></span>
                 </div>
             </div>
         </div>
@@ -75,41 +77,58 @@
     <script>
         let wordData = null;
 
+        // データの読み込み
         async function loadWords() {
-            try {
-                const response = await fetch('data.json');
-                wordData = await response.json();
-                updateCounts();
-            } catch (error) {
-                console.error('データ読み込みエラー:', error);
+            const { content } = await getFileFromGitHub();
+            wordData = content;
+            updateCounts();
+            updateLastUpdate();
+        }
+
+        // データの保存
+        async function saveWords() {
+            const { sha } = await getFileFromGitHub();
+            const result = await updateFileOnGitHub(wordData, sha);
+            if (result) {
+                updateLastUpdate();
             }
+            return result;
         }
 
         function updateCounts() {
             const wordCount = wordData.words.length;
             const sectionCount = Math.ceil(wordCount / 20);
             
-            document.getElementById('wordCount').textContent = `単語数: ${wordCount}`;
+            document.getElementById('wordCount').textContent = `登録単語数: ${wordCount}`;
             document.getElementById('sectionCount').textContent = sectionCount;
         }
 
+        function updateLastUpdate() {
+            const date = new Date(wordData.lastUpdate);
+            document.getElementById('lastUpdate').textContent = 
+                `最終更新: ${date.toLocaleString()}`;
+        }
+
+        // フォームの送信処理
         document.getElementById('wordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const word = document.getElementById('word').value;
             const meaning = document.getElementById('meaning').value;
-            
-            // 実際のアプリケーションでは、ここでGitHub APIを使用してJSONファイルを更新
+
             wordData.words.push({ word, meaning });
             wordData.lastUpdate = new Date().toISOString();
-            updateCounts();
-            
-            document.getElementById('word').value = '';
-            document.getElementById('meaning').value = '';
-            document.getElementById('word').focus();
 
-            alert('単語を登録しました！');
+            const saved = await saveWords();
+            if (saved) {
+                document.getElementById('word').value = '';
+                document.getElementById('meaning').value = '';
+                document.getElementById('word').focus();
+                updateCounts();
+                alert('単語を登録しました！');
+            }
         });
 
+        // 初期表示時のデータ読み込み
         loadWords();
     </script>
 </body>

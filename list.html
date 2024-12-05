@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>単語一覧 | 英単語学習アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
     <style>
         .meaning { 
             opacity: 0; 
@@ -36,9 +37,12 @@
                         <a href="test.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">テスト</a>
                     </div>
                 </div>
-                <button onclick="toggleAllMeanings()" class="text-blue-600 hover:text-blue-800">
-                    全ての意味を表示/非表示
-                </button>
+                <div class="flex items-center space-x-4">
+                    <div id="wordCount" class="text-sm text-gray-600">単語数: 0</div>
+                    <button onclick="toggleAllMeanings()" class="text-blue-600 hover:text-blue-800">
+                        全ての意味を表示/非表示
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -58,13 +62,20 @@
         let showAllMeanings = false;
 
         async function loadWords() {
-            try {
-                const response = await fetch('data.json');
-                wordData = await response.json();
-                displayWords();
-            } catch (error) {
-                console.error('データ読み込みエラー:', error);
+            const { content } = await getFileFromGitHub();
+            wordData = content;
+            displayWords();
+            updateWordCount();
+        }
+
+        async function saveWords() {
+            const { sha } = await getFileFromGitHub();
+            wordData.lastUpdate = new Date().toISOString();
+            const result = await updateFileOnGitHub(wordData, sha);
+            if (!result) {
+                alert('データの保存に失敗しました');
             }
+            return result;
         }
 
         function toggleMeaning(element) {
@@ -83,10 +94,16 @@
             });
         }
 
+        function updateWordCount() {
+            const count = wordData.words.length;
+            document.getElementById('wordCount').textContent = 
+                `単語数: ${count}`;
+        }
+
         function displayWords() {
             const wordList = document.getElementById('wordList');
             
-            if (wordData.words.length === 0) {
+            if (!wordData.words.length) {
                 wordList.innerHTML = `
                     <div class="p-8 text-center text-gray-500">
                         単語が登録されていません
@@ -122,13 +139,16 @@
 
         async function deleteWord(index) {
             if (confirm('この単語を削除してもよろしいですか？')) {
-                // 実際のアプリケーションでは、ここでGitHub APIを使用してJSONファイルを更新
                 wordData.words.splice(index, 1);
-                wordData.lastUpdate = new Date().toISOString();
-                displayWords();
+                const saved = await saveWords();
+                if (saved) {
+                    displayWords();
+                    updateWordCount();
+                }
             }
         }
 
+        // 初期表示時のデータ読み込み
         loadWords();
     </script>
 </body>
