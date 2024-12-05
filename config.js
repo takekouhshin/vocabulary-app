@@ -5,25 +5,22 @@ const SHEETS_CONFIG = {
     RANGE: 'Sheet1!A:D'
 };
 
+// スプレッドシートからデータを取得
 async function getWordsFromSheets() {
     try {
-        if (!SHEETS_CONFIG.API_KEY || !SHEETS_CONFIG.SPREADSHEET_ID) {
-            console.error('API_KEYまたはSPREADSHEET_IDが設定されていません');
-            return { words: [], lastUpdate: new Date().toISOString() };
-        }
-
         const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?key=${SHEETS_CONFIG.API_KEY}`
         );
 
         if (!response.ok) {
-            throw new Error(`Sheets API error: ${response.status}`);
+            console.error('API応答エラー:', response.status);
+            return { words: [] };
         }
 
         const data = await response.json();
         const rows = data.values || [];
         
-        // ヘッダー行をスキップしてデータを整形
+        // 最初の行はヘッダーとしてスキップ
         const words = rows.slice(1).map(row => ({
             word: row[0] || '',
             meaning: row[1] || '',
@@ -31,39 +28,38 @@ async function getWordsFromSheets() {
             addedAt: row[3] || new Date().toISOString()
         }));
 
-        return {
-            words,
-            lastUpdate: new Date().toISOString()
-        };
+        return { words };
     } catch (error) {
         console.error('Sheets APIエラー:', error);
-        return { words: [], lastUpdate: new Date().toISOString() };
+        return { words: [] };
     }
 }
 
+// スプレッドシートにデータを更新
 async function updateWordsInSheets(words) {
     try {
+        // データを2次元配列に変換
         const values = [
             ['Word', 'Meaning', 'Example', 'Added At'], // ヘッダー行
-            ...words.map(w => [w.word, w.meaning, w.example || '', w.addedAt])
+            ...words.map(w => [w.word, w.meaning, w.example, w.addedAt])
         ];
 
         const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?key=${SHEETS_CONFIG.API_KEY}`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?valueInputOption=RAW&key=${SHEETS_CONFIG.API_KEY}`,
             {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    values,
-                    valueInputOption: 'RAW'
+                    values: values
                 })
             }
         );
 
         if (!response.ok) {
-            throw new Error(`Sheets API error: ${response.status}`);
+            console.error('API更新エラー:', response.status);
+            return false;
         }
 
         return true;
