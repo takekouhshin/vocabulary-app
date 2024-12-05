@@ -2,6 +2,7 @@
 const SHEETS_CONFIG = {
     API_KEY: 'AIzaSyAIxUb3ZheM0C36NIMkt3A-lBBb1LbSecM',
     SPREADSHEET_ID: '10WLf6zUa_58n6-BRpL63HHl1zkjI1uOHFfwH5CFDr-0',
+    SHEET_NAME: 'Sheet1',
     RANGE: 'A1:D1000'
 };
 
@@ -9,12 +10,12 @@ const SHEETS_CONFIG = {
 async function getWordsFromSheets() {
     try {
         const baseUrl = 'https://sheets.googleapis.com/v4/spreadsheets';
-        const url = new URL(`${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/Sheet1!${SHEETS_CONFIG.RANGE}`);
+        // 範囲を正しい形式でエンコード
+        const range = encodeURIComponent(`${SHEETS_CONFIG.SHEET_NAME}!${SHEETS_CONFIG.RANGE}`);
+        const url = new URL(`${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${range}`);
         
         // クエリパラメータを追加
         url.searchParams.append('key', SHEETS_CONFIG.API_KEY);
-        url.searchParams.append('valueRenderOption', 'UNFORMATTED_VALUE');
-        url.searchParams.append('dateTimeRenderOption', 'FORMATTED_STRING');
 
         console.log('リクエストURL:', url.toString()); // デバッグ用
 
