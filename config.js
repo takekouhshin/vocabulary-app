@@ -1,7 +1,7 @@
 // GitHubの設定
 const GITHUB_CONFIG = {
-    TOKEN: 'YOUR_GITHUB_TOKEN',  // ここに自分のGitHubトークンを設定
-    OWNER: 'YOUR_USERNAME',      // GitHubのユーザー名
+    TOKEN: 'API_TOKEN',  // ここに自分のGitHubトークンを設定
+    OWNER: 'REPO_OWNER',      // GitHubのユーザー名
     REPO: 'vocabulary-app',      // リポジトリ名
     FILE_PATH: 'data.json'       // データファイルのパス
 };
