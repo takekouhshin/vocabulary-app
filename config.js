@@ -1,6 +1,6 @@
 // Google Sheets API設定
 const SHEETS_CONFIG = {
-    API_KEY: 'AIzaSyAIxUb3ZheM0C36NIMkt3A-lBBb1LbSecM',
+    API_KEY: 'AIzaSyBib7jw_MOlwlTdfzIsXBr9zeNfA3egnIg',
     SPREADSHEET_ID: '10WLf6zUa_58n6-BRpL63HHl1zkjI1uOHFfwH5CFDr-0',
     RANGE: 'Sheet1!A:D'
 };
@@ -8,19 +8,16 @@ const SHEETS_CONFIG = {
 // スプレッドシートからデータを取得
 async function getWordsFromSheets() {
     try {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`;
-        const params = new URLSearchParams({
-            key: SHEETS_CONFIG.API_KEY,
-            valueRenderOption: 'FORMATTED_VALUE',
-            dateTimeRenderOption: 'FORMATTED_STRING'
-        });
+        const url = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`);
+        url.searchParams.append('key', SHEETS_CONFIG.API_KEY);
+        url.searchParams.append('majorDimension', 'ROWS');
 
-        const response = await fetch(`${url}?${params.toString()}`);
+        const response = await fetch(url.toString());
 
         if (!response.ok) {
             const errorData = await response.json();
             console.error('API応答詳細:', errorData);
-            throw new Error(`Sheets API error: ${response.status}`);
+            throw new Error(`Sheets API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
         }
 
         const data = await response.json();
@@ -50,24 +47,23 @@ async function getWordsFromSheets() {
 // スプレッドシートにデータを更新
 async function updateWordsInSheets(words) {
     try {
+        const url = new URL(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`);
+        url.searchParams.append('key', SHEETS_CONFIG.API_KEY);
+        url.searchParams.append('valueInputOption', 'RAW');
+
         const values = [
             ['Word', 'Meaning', 'Example', 'Added At'], // ヘッダー行
             ...words.map(w => [w.word, w.meaning, w.example, w.addedAt])
         ];
 
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`;
-        const params = new URLSearchParams({
-            key: SHEETS_CONFIG.API_KEY,
-            valueInputOption: 'RAW'
-        });
-
-        const response = await fetch(`${url}?${params.toString()}`, {
+        const response = await fetch(url.toString(), {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                values: values
+                values: values,
+                majorDimension: 'ROWS'
             })
         });
 
