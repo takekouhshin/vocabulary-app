@@ -51,27 +51,31 @@ async function getFileFromGitHub() {
 // GitHubにファイルを更新する関数
 async function updateFileOnGitHub(content, sha) {
     try {
+        // UTF-8文字列を適切にエンコード
+        const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(content))));
+
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
             method: 'PUT',
             headers: {
-                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
+                'Authorization': `Bearer ${GITHUB_CONFIG.TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                message: '単語データの更新',
-                content: btoa(JSON.stringify(content, null, 2)),
+                message: 'Update data.json',
+                content: encodedContent,
                 sha: sha
             })
         });
 
         if (!response.ok) {
-            throw new Error('更新に失敗しました');
+            const errorData = await response.json();
+            throw new Error(`GitHub API error: ${response.status} ${JSON.stringify(errorData)}`);
         }
 
-        return true;
+        return await response.json();
     } catch (error) {
         console.error('GitHub API更新エラー:', error);
-        return false;
+        throw error;
     }
 }

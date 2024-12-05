@@ -20,4 +20,11 @@ jobs:
       # config.jsにGitHubトークンを注入
       - name: Update config.js with GitHub token
         run: |
-          sed -i "s/TOKEN: ''/TOKEN: '${{ secrets.API_TOKEN }}'/" config.js
+          sed -i 's/TOKEN: ""/TOKEN: "${{ secrets.API_TOKEN }}"/' config.js
+          cat config.js # デバッグ用に内容を表示
+
+      - name: Create data.json if not exists
+        run: |
+          if [ ! -f data.json ]; then
+            echo '[]' > data.json
+          fi
