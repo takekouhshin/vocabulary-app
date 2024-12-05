@@ -87,28 +87,28 @@
 
         // データの保存
         async function saveWords(event) {
-            event.preventDefault();
+            if (event) event.preventDefault();
             
             try {
-                const result = await getFileFromGitHub();
-                const currentData = result.content || { words: [], lastUpdate: new Date().toISOString() };
+                // 現在のデータを取得
+                const currentData = await getWordsFromSheets();
                 
                 // 新しい単語を追加
                 const newWord = {
-                    english: document.getElementById('english').value,
-                    japanese: document.getElementById('japanese').value,
-                    section: document.getElementById('section').value,
+                    word: document.getElementById('english').value,
+                    meaning: document.getElementById('japanese').value,
+                    example: document.getElementById('section').value,
                     addedAt: new Date().toISOString()
                 };
                 
+                // 配列が未定義の場合は初期化
                 currentData.words = currentData.words || [];
                 currentData.words.push(newWord);
-                currentData.lastUpdate = new Date().toISOString();
                 
-                // GitHub APIで保存
-                const updateResult = await updateFileOnGitHub(currentData, result.sha);
+                // スプレッドシートに保存
+                const success = await updateWordsInSheets(currentData.words);
                 
-                if (updateResult || !GITHUB_CONFIG.TOKEN) {
+                if (success) {
                     // フォームをリセット
                     document.getElementById('wordForm').reset();
                     alert('単語を保存しました！');
@@ -135,24 +135,8 @@
                 `最終更新: ${date.toLocaleString()}`;
         }
 
-        // フォームの送信処理
-        document.getElementById('wordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const word = document.getElementById('word').value;
-            const meaning = document.getElementById('meaning').value;
-
-            wordData.words.push({ word, meaning });
-            wordData.lastUpdate = new Date().toISOString();
-
-            const saved = await saveWords();
-            if (saved) {
-                document.getElementById('word').value = '';
-                document.getElementById('meaning').value = '';
-                document.getElementById('word').focus();
-                updateCounts();
-                alert('単語を登録しました！');
-            }
-        });
+        // フォーム送信処理
+        document.getElementById('wordForm').addEventListener('submit', saveWords);
 
         // 初期表示時のデータ読み込み
         loadWords();
