@@ -2,14 +2,14 @@
 const SHEETS_CONFIG = {
     API_KEY: 'AIzaSyAIxUb3ZheM0C36NIMkt3A-lBBb1LbSecM',
     SPREADSHEET_ID: '10WLf6zUa_58n6-BRpL63HHl1zkjI1uOHFfwH5CFDr-0',
-    RANGE: 'Sheet1!A1:D1000'
+    RANGE: 'A1:D1000'
 };
 
 // スプレッドシートからデータを取得
 async function getWordsFromSheets() {
     try {
         const baseUrl = 'https://sheets.googleapis.com/v4/spreadsheets';
-        const url = new URL(`${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}`);
+        const url = new URL(`${baseUrl}/${SHEETS_CONFIG.SPREADSHEET_ID}/values/Sheet1!${SHEETS_CONFIG.RANGE}`);
         
         // クエリパラメータを追加
         url.searchParams.append('key', SHEETS_CONFIG.API_KEY);
