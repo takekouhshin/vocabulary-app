@@ -6,44 +6,39 @@ const GITHUB_CONFIG = {
     OWNER: 'takekouhshin',
     REPO: 'vocabulary-app',
     FILE_PATH: 'data.json',
-    TOKEN: '' // GitHub Actionsから環境変数として注入
+    TOKEN: '' // GitHub Actionsから注入される
 };
 
 async function getFileFromGitHub() {
     try {
-        if (DEBUG) console.log('API呼び出し開始:', {
-            url: `https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`,
-            timestamp: new Date().toISOString()
-        });
+        if (DEBUG) {
+            console.log('API呼び出し設定:', {
+                url: `https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`,
+                hasToken: !!GITHUB_CONFIG.TOKEN,
+                owner: GITHUB_CONFIG.OWNER,
+                repo: GITHUB_CONFIG.REPO
+            });
+        }
 
         const response = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.OWNER}/${GITHUB_CONFIG.REPO}/contents/${GITHUB_CONFIG.FILE_PATH}`, {
             headers: {
-                'Authorization': `token ${GITHUB_CONFIG.TOKEN}`,
+                'Authorization': `Bearer ${GITHUB_CONFIG.TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json'
             }
         });
 
-        if (DEBUG) console.log('APIレスポンス:', {
-            status: response.status,
-            headers: Object.fromEntries(response.headers)
-        });
-
         if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(`GitHub API error: ${response.status} ${JSON.stringify(errorData)}`);
         }
 
         const data = await response.json();
-        if (DEBUG) console.log('取得データ:', data);
-
         return {
             content: JSON.parse(atob(data.content)),
             sha: data.sha
         };
     } catch (error) {
-        console.error('エラー発生:', {
-            message: error.message,
-            timestamp: new Date().toISOString()
-        });
+        console.error('GitHub APIエラー:', error);
         throw error;
     }
 }
