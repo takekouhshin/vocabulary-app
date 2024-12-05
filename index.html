@@ -90,16 +90,22 @@
             if (event) event.preventDefault();
             
             try {
-                // 現在のデータを取得
-                const currentData = await getWordsFromSheets();
-                
-                // 新しい単語を追加
+                // フォームから値を取得
                 const newWord = {
                     word: document.getElementById('english').value,
                     meaning: document.getElementById('japanese').value,
                     example: document.getElementById('section').value,
                     addedAt: new Date().toISOString()
                 };
+
+                // 入力チェック
+                if (!newWord.word || !newWord.meaning) {
+                    alert('英単語と日本語の意味を入力してください。');
+                    return;
+                }
+
+                // 現在のデータを取得
+                const currentData = await getFileFromGitHub();
                 
                 // 配列が未定義の場合は初期化
                 currentData.words = currentData.words || [];
