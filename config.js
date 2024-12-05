@@ -1,12 +1,17 @@
 // Google Sheets API設定
 const SHEETS_CONFIG = {
-    API_KEY: '', // GitHub Actionsから注入
-    SPREADSHEET_ID: '', // あなたのスプレッドシートID
-    RANGE: 'Sheet1!A:D' // 使用する範囲
+    API_KEY: 'AIzaSyAIxUb3ZheM0C36NIMkt3A-lBBb1LbSecM', // Google Cloud ConsoleからコピーしたAPIキー
+    SPREADSHEET_ID: '10WLf6zUa_58n6-BRpL63HHl1zkjI1uOHFfwH5CFDr-0', // スプレッドシートのURL中のID
+    RANGE: 'Sheet1!A:D'
 };
 
 async function getWordsFromSheets() {
     try {
+        if (!SHEETS_CONFIG.API_KEY || !SHEETS_CONFIG.SPREADSHEET_ID) {
+            console.error('API_KEYまたはSPREADSHEET_IDが設定されていません');
+            return { words: [], lastUpdate: new Date().toISOString() };
+        }
+
         const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.SPREADSHEET_ID}/values/${SHEETS_CONFIG.RANGE}?key=${SHEETS_CONFIG.API_KEY}`
         );
