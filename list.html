@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>単語一覧 | 英単語学習アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .meaning { 
+            opacity: 0; 
+            height: 0;
+            transition: all 0.3s ease;
+        }
+        .show-meaning .meaning { 
+            opacity: 1;
+            height: auto;
+        }
+        .word-card { 
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .word-card:hover { 
+            transform: translateX(5px);
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-2xl font-bold text-gray-800">単語一覧</h1>
+                    <div class="hidden md:flex space-x-4">
+                        <a href="index.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">単語登録</a>
+                        <a href="test.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">テスト</a>
+                    </div>
+                </div>
+                <button onclick="toggleAllMeanings()" class="text-blue-600 hover:text-blue-800">
+                    全ての意味を表示/非表示
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-4">
+        <div class="bg-white rounded-xl shadow-sm">
+            <div id="wordList" class="divide-y divide-gray-100">
+                <div class="p-8 text-center text-gray-500">
+                    読み込み中...
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let wordData = null;
+        let showAllMeanings = false;
+
+        async function loadWords() {
+            try {
+                const response = await fetch('data.json');
+                wordData = await response.json();
+                displayWords();
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+            }
+        }
+
+        function toggleMeaning(element) {
+            element.classList.toggle('show-meaning');
+        }
+
+        function toggleAllMeanings() {
+            showAllMeanings = !showAllMeanings;
+            const wordItems = document.querySelectorAll('.word-card');
+            wordItems.forEach(item => {
+                if (showAllMeanings) {
+                    item.classList.add('show-meaning');
+                } else {
+                    item.classList.remove('show-meaning');
+                }
+            });
+        }
+
+        function displayWords() {
+            const wordList = document.getElementById('wordList');
+            
+            if (wordData.words.length === 0) {
+                wordList.innerHTML = `
+                    <div class="p-8 text-center text-gray-500">
+                        単語が登録されていません
+                    </div>
+                `;
+                return;
+            }
+
+            wordList.innerHTML = wordData.words.map((item, index) => `
+                <div class="word-card p-4" onclick="toggleMeaning(this)">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-grow flex items-center space-x-8">
+                            <div class="w-16 text-center">
+                                <span class="text-blue-500 font-bold">#${index + 1}</span>
+                            </div>
+                            <div class="flex-grow">
+                                <div class="font-medium text-gray-800">${item.word}</div>
+                                <div class="meaning text-gray-600 mt-2 pl-4 border-l-2 border-gray-200">
+                                    ${item.meaning}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="deleteWord(${index}); event.stopPropagation();" 
+                                class="text-gray-400 hover:text-red-500 transition duration-200 p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteWord(index) {
+            if (confirm('この単語を削除してもよろしいですか？')) {
+                // 実際のアプリケーションでは、ここでGitHub APIを使用してJSONファイルを更新
+                wordData.words.splice(index, 1);
+                wordData.lastUpdate = new Date().toISOString();
+                displayWords();
+            }
+        }
+
+        loadWords();
+    </script>
+</body>
+</html>

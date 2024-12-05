@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テスト | 英単語学習アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-2xl font-bold text-gray-800">英単語テスト</h1>
+                    <div class="hidden md:flex space-x-4">
+                        <a href="index.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">単語登録</a>
+                        <a href="list.html" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md">単語一覧</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-4">
+        <!-- セクション選択画面 -->
+        <div id="sectionSelect" class="bg-white rounded-xl shadow-sm p-8">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">テストセクションを選択</h2>
+            <div id="sectionList" class="grid grid-cols-1 gap-4">
+                <div class="text-center text-gray-500">
+                    読み込み中...
+                </div>
+            </div>
+        </div>
+
+        <!-- テスト画面 -->
+        <div id="testContainer" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <!-- セクション情報 -->
+                <div class="bg-gray-50 p-4 border-b">
+                    <div id="currentSection" class="text-sm text-gray-600"></div>
+                </div>
+
+                <!-- 問題エリア -->
+                <div id="questionArea" class="p-8 border-b">
+                    <div class="mb-6">
+                        <div class="text-sm text-gray-500 mb-1">問題：</div>
+                        <div id="questionWord" class="text-2xl font-bold text-gray-800"></div>
+                    </div>
+                    <input type="text" id="answer" 
+                           class="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           placeholder="意味を入力してください">
+                    <button id="checkAnswer" 
+                            class="w-full bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 transition duration-200">
+                        回答を確認
+                    </button>
+                </div>
+
+                <!-- 結果エリア -->
+                <div id="resultArea" class="hidden p-8 bg-gray-50">
+                    <div id="result" class="text-xl font-bold mb-2"></div>
+                    <div id="correctAnswer" class="text-gray-600 mb-4"></div>
+                    <button id="nextQuestion" 
+                            class="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                        次の問題へ
+                    </button>
+                </div>
+            </div>
+
+            <!-- 進捗バー -->
+            <div class="mt-4 bg-white rounded-lg shadow-sm p-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>進捗状況</span>
+                    <span id="progressText">0 / 0問</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- テスト結果の表示エリア -->
+        <div id="testResults" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm p-8">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">テスト結果</h3>
+                <div id="resultsContent"></div>
+                <div class="mt-6 flex justify-center space-x-4">
+                    <button onclick="showSectionSelect()" 
+                            class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition duration-200">
+                        セクション選択に戻る
+                    </button>
+                    <button onclick="retrySection()" 
+                            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition duration-200">
+                        このセクションをもう一度
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let wordData = null;
+        let testWords = [];
+        let currentQuestionIndex = 0;
+        let correctCount = 0;
+        let currentSectionIndex = 0;
+
+        async function loadWords() {
+            try {
+                const response = await fetch('data.json');
+                wordData = await response.json();
+                showSectionSelect();
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+            }
+        }
+
+        function getSections() {
+            if (!wordData || !wordData.words) return [];
+            const sections = [];
+            for (let i = 0; i < wordData.words.length; i += 20) {
+                sections.push(wordData.words.slice(i, i + 20));
+            }
+            return sections;
+        }
+
+        function showSectionSelect() {
+            const sections = getSections();
+            const sectionList = document.getElementById('sectionList');
+            
+            if (sections.length === 0) {
+                sectionList.innerHTML = `
+                    <div class="text-center text-gray-500">
+                        単語が登録されていません
+                    </div>
+                `;
+                return;
+            }
+
+            sectionList.innerHTML = sections.map((section, index) => `
+                <button onclick="startTest(${index})" 
+                        class="bg-white border border-gray-200 p-6 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-lg font-bold text-gray-800">
+                                セクション ${index + 1}
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                単語数: ${section.length}語 (#${index * 20 + 1} - #${index * 20 + section.length})
+                            </div>
+                        </div>
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </button>
+            `).join('');
+
+            document.getElementById('sectionSelect').classList.remove('hidden');
+            document.getElementById('testContainer').classList.add('hidden');
+            document.getElementById('testResults').classList.add('hidden');
+        }
+
+        function startTest(sectionIndex) {
+            const sections = getSections();
+            if (sectionIndex >= sections.length) return;
+
+            currentSectionIndex = sectionIndex;
+            testWords = [...sections[sectionIndex]].sort(() => Math.random() - 0.5);
+            currentQuestionIndex = 0;
+            correctCount = 0;
+
+            document.getElementById('sectionSelect').classList.add('hidden');
+            document.getElementById('testContainer').classList.remove('hidden');
+            document.getElementById('testResults').classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+
+            document.getElementById('currentSection').textContent = 
+                `セクション ${sectionIndex + 1} (単語 #${sectionIndex * 20 + 1} - #${sectionIndex * 20 + testWords.length})`;
+
+            showQuestion();
+            updateProgress();
+        }
+
+        function showQuestion() {
+            const currentWord = testWords[currentQuestionIndex];
+            document.getElementById('questionWord').textContent = currentWord.word;
+            document.getElementById('answer').value = '';
+            document.getElementById('resultArea').classList.add('hidden');
+            document.getElementById('answer').focus();
+        }
+
+        function updateProgress() {
+            const progress = (currentQuestionIndex / testWords.length) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = 
+                `${currentQuestionIndex} / ${testWords.length}問`;
+        }
+
+        function checkAnswer() {
+            const answer = document.getElementById('answer').value;
+            const currentWord = testWords[currentQuestionIndex];
+            const isCorrect = answer === currentWord.meaning;
+
+            if (isCorrect) correctCount++;
+
+            document.getElementById('result').textContent = isCorrect ? '正解！' : '不正解';
+            document.getElementById('result').className = `text-xl font-bold mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('correctAnswer').textContent = `正しい答え: ${currentWord.meaning}`;
+            document.getElementById('resultArea').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            updateProgress();
+            
+            if (currentQuestionIndex >= testWords.length) {
+                showResults();
+                return;
+            }
+            showQuestion();
+        }
+
+        function showResults() {
+            const percentage = Math.round((correctCount / testWords.length) * 100);
+            document.getElementById('testContainer').classList.add('hidden');
+            document.getElementById('testResults').classList.remove('hidden');
+            
+            document.getElementById('resultsContent').innerHTML = `
+                <div class="text-center">
+                    <div class="text-4xl font-bold ${percentage >= 80 ? 'text-green-500' : percentage >= 60 ? 'text-yellow-500' : 'text-red-500'}">
+                        ${percentage}%
+                    </div>
+                    <div class="text-gray-600 mt-2">
+                        ${testWords.length}問中${correctCount}問正解
+                    </div>
+                </div>
+            `;
+        }
+
+        function retrySection() {
+            startTest(currentSectionIndex);
+        }
+
+        // Enter キーでの送信サポート
+        document.getElementById('answer').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.getElementById('resultArea').classList.contains('hidden')) {
+                    document.getElementById('checkAnswer').click();
+                } else {
+                    document.getElementById('nextQuestion').click();
+                }
+            }
+        });
+
+        document.getElementById('checkAnswer').addEventListener('click', checkAnswer);
+        document.getElementById('nextQuestion').addEventListener('click', nextQuestion);
+
+        // 初期表示時のデータ読み込み
+        loadWords();
+    </script>
+</body>
+</html>
